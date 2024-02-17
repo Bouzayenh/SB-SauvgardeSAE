@@ -1,0 +1,4 @@
+txt
+pdf
+jpg
+webp
