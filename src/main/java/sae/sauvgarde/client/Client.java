@@ -8,6 +8,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.*;
+import java.net.Socket;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -24,69 +25,6 @@ public class Client {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8080;
     private static final String PARAMETER_FILE_NAME = "C:\\Users\\bh13h\\IdeaProjects\\SauvgardeJ\\src\\main\\java\\client\\parameters.txt";
-
-    public static void main(String[] args) throws Exception {
-        Set<String> allowedExtensions = loadAllowedExtensions();
-        Scanner scanner = new Scanner(System.in);
-
-        // Establish SSL connection
-        SSLSocket sslSocket = createSSLSocket();
-        ObjectOutputStream out = new ObjectOutputStream(sslSocket.getOutputStream());
-        ObjectInputStream in = new ObjectInputStream(sslSocket.getInputStream());
-
-
-        try {
-            while (true) {
-                System.out.print("Enter the folder path to backup/restore or type 'exit' to quit: ");
-                String folderPathStr = scanner.nextLine();
-
-                if ("exit".equalsIgnoreCase(folderPathStr)) {
-                    break;
-                }
-
-                System.out.print("Type 'backup' to backup or 'restore' to restore: ");
-                String operation = scanner.nextLine();
-
-                try {
-                    Path folderPath = Paths.get(folderPathStr);
-                    if (!Files.isDirectory(folderPath)) {
-                        System.out.println("The specified path is not a directory.");
-                        continue;
-                    }
-
-                    String baseFolderName = folderPath.getFileName().toString();
-
-                    System.out.print("Do you want to use zips? (yes/no): ");
-                    String useZip = scanner.nextLine();
-
-                    if ("yes".equalsIgnoreCase(useZip)) {
-                        if ("backup".equalsIgnoreCase(operation)) {
-                            backupWithZip(folderPath, out, baseFolderName, in);
-                        } else if ("restore".equalsIgnoreCase(operation)) {
-                            restoreWithZip(folderPath, out, in); // Pass the folder path for restoration
-                        }
-                    } else {
-                        if ("backup".equalsIgnoreCase(operation)) {
-                            backupFiles(folderPath, allowedExtensions, out, baseFolderName, in);
-                        } else if ("restore".equalsIgnoreCase(operation)) {
-                            restoreFiles(folderPath, out, in, baseFolderName);
-                        } else {
-                            System.out.println("Invalid operation. Please type 'backup' or 'restore'.");
-                        }
-                    }
-                } catch (InvalidPathException e) {
-                    System.out.println("Invalid path: " + folderPathStr);
-                } catch (Exception e) {
-                    System.out.println("An error occurred: " + e.getMessage());
-                }
-            }
-        } finally {
-            System.out.println("Closing connection...");
-            out.close();
-            sslSocket.close();
-            scanner.close();
-        }
-    }
 
     private static void backupFiles(Path folderPath, Set<String> allowedExtensions, ObjectOutputStream out, String baseFolderName, ObjectInputStream in) throws IOException {
         try (Stream<Path> paths = Files.walk(folderPath)) {
@@ -280,10 +218,11 @@ public class Client {
 
         // Create and return SSLSocket
         SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
         return (SSLSocket) sslSocketFactory.createSocket(SERVER_ADDRESS, SERVER_PORT);
     }
 
-    public static String performOperation(String folderPathStr, String operation, boolean useZip) throws Exception {
+    public static String performOperation(String folderPathStr, String operation, String useZipStr) throws Exception {
         SSLSocket sslSocket = createSSLSocket();
         ObjectOutputStream out = new ObjectOutputStream(sslSocket.getOutputStream());
         ObjectInputStream in = new ObjectInputStream(sslSocket.getInputStream());
@@ -291,35 +230,33 @@ public class Client {
         try {
             Path folderPath = Paths.get(folderPathStr);
             if (!Files.isDirectory(folderPath)) {
-                return "The specified path is not a directory.";
+                throw new InvalidPathException(folderPathStr, "The specified path is not a directory.");
             }
 
             String baseFolderName = folderPath.getFileName().toString();
             Set<String> allowedExtensions = loadAllowedExtensions();
 
+            boolean useZip = "yes".equalsIgnoreCase(useZipStr);
             if (useZip) {
                 if ("backup".equalsIgnoreCase(operation)) {
                     backupWithZip(folderPath, out, baseFolderName, in);
-                    return "Backup with ZIP completed.";
                 } else if ("restore".equalsIgnoreCase(operation)) {
                     restoreWithZip(folderPath, out, in);
-                    return "Restore with ZIP completed.";
                 }
             } else {
                 if ("backup".equalsIgnoreCase(operation)) {
                     backupFiles(folderPath, allowedExtensions, out, baseFolderName, in);
-                    return "Backup completed.";
                 } else if ("restore".equalsIgnoreCase(operation)) {
                     restoreFiles(folderPath, out, in, baseFolderName);
-                    return "Restore completed.";
                 }
             }
+
+            return "Operation completed successfully.";
         } catch (Exception e) {
             return "An error occurred: " + e.getMessage();
         } finally {
             out.close();
             sslSocket.close();
         }
-        return "Invalid operation. Please type 'backup' or 'restore'.";
     }
 }

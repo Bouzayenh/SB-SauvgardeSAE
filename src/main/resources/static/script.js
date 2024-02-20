@@ -13,7 +13,7 @@ document.getElementById('operationForm').addEventListener('submit', function(eve
     };
 
     // TODO: remplacer par l'url du vrai serveur a la fin
-    const url = 'http://localhost:8080/performOperation';
+    const url = 'http://localhost:8081/performOperation';
 
     fetch(url, {
         method: 'POST',
