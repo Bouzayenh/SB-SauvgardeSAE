@@ -5,6 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.security.Principal;
+import java.time.chrono.MinguoDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -15,7 +16,7 @@ public class WebController {
 
     @GetMapping(path = "/")
     public String index() {
-        return "home";
+        return "external";
     }
 
     @GetMapping("/logout")
@@ -24,6 +25,9 @@ public class WebController {
         return "redirect:/";
     }
 
-    //@GetMapping(path = "/index")
+    @GetMapping(path = "/index")
+    public String app(){
+        return "index";
+    }
 
 }
