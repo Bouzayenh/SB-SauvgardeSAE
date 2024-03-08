@@ -56,8 +56,9 @@ class SecurityConfig {
     @Bean
     public SecurityFilterChain resourceServerFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(new AntPathRequestMatcher("/index*"))
+                        .requestMatchers(new AntPathRequestMatcher("/index"))
                         .authenticated()  // Allow any authenticated user
                         .requestMatchers(new AntPathRequestMatcher("/"))
                         .permitAll()

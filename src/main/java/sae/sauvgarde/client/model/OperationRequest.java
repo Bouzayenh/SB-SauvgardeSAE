@@ -1,18 +1,25 @@
 package sae.sauvgarde.client.model;
 
+import java.util.List;
+import java.util.Set;
+
 public class OperationRequest {
     private String folderPath;
     private String operation;
     private boolean useZip;
+    private String username;
 
-    // Constructors, getters, and setters
+    private Set<String> extensions;
+
     public OperationRequest() {}
 
-    public OperationRequest(String folderPath, String operation, boolean useZip) {
+    public OperationRequest(String folderPath, String operation, boolean useZip, String username) { // Update constructor
         this.folderPath = folderPath;
         this.operation = operation;
         this.useZip = useZip;
+        this.username = username; // Set username
     }
+
 
     public String getFolderPath() {
         return folderPath;
@@ -36,5 +43,21 @@ public class OperationRequest {
 
     public void setUseZip(boolean useZip) {
         this.useZip = useZip;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public Set<String> getExtensions() {
+        return extensions;
+    }
+
+    public void setExtensions(Set<String> extensions) {
+        this.extensions = extensions;
     }
 }

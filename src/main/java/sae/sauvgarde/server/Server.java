@@ -93,4 +93,15 @@ public class Server {
         sslContext.init(kmf.getKeyManagers(), null, null);
         return sslContext;
     }
+
+    public static String getBackupDirForUser(String username) {
+        return Paths.get(BACKUP_DIR, username).toString();
+    }
+
+    public static String getZipBackupDirForUser(String username) {
+        return Paths.get(ZIP_BACKUP_DIR, username).toString();
+    }
+
+
+
 }

@@ -4,16 +4,17 @@ document.getElementById('operationForm').addEventListener('submit', function(eve
     const folderPath = document.getElementById('folderPath').value;
     const operation = document.getElementById('operation').value;
     const useZip = document.getElementById('useZip').checked;
+    const extensions = document.getElementById('extensions').value.split(',');
 
-    // Construct the request payload
     const payload = {
         folderPath: folderPath,
         operation: operation,
-        useZip: useZip
+        useZip: useZip,
+        extensions: extensions
     };
 
     // TODO: remplacer par l'url du vrai serveur a la fin
-    const url = 'http://localhost:8081/performOperation';
+    const url = 'http://localhost:8082/performOperation';
 
     fetch(url, {
         method: 'POST',

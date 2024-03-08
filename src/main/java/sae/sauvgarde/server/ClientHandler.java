@@ -9,7 +9,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,25 +30,29 @@ class ClientHandler extends Thread {
         try (ObjectInputStream in = new ObjectInputStream(sslSocket.getInputStream());
              ObjectOutputStream out = new ObjectOutputStream(sslSocket.getOutputStream())) {
 
+            String username = (String) in.readObject();
+
             Object obj;
             while ((obj = in.readObject()) != null) {
+                String userBackupDir = Server.getBackupDirForUser(username);
+                String userZipBackupDir = Server.getZipBackupDirForUser(username);
                 if (obj instanceof FileBackup) {
                     FileBackup backup = (FileBackup) obj;
                     if (backup.getFileName().endsWith(".zip")) {
-                        handleZipBackup(backup, out);
+                        handleZipBackup(backup, out, userZipBackupDir);
                     } else {
-                        saveBackup(backup, out);
+                        saveBackup(backup, out, userBackupDir);
                     }
                 } else if (obj instanceof String) {
                     String command = (String) obj;
                     if (command.startsWith("RESTORE:")) {
                         String baseFolderName = command.substring(8);
-                        restoreFiles(baseFolderName, out);
+                        restoreFiles(baseFolderName, out, userBackupDir);
                     } else if (command.equals("ZIP_RESTORE_REQUEST")) {
-                        sendZipFileList(out);
+                        sendZipFileList(out, userZipBackupDir);
                     } else if (command.startsWith("ZIP_RESTORE:")) {
                         String zipFileName = command.substring(12);
-                        handleZipRestore(zipFileName, out);
+                        handleZipRestore(zipFileName, out, userZipBackupDir);
                     }
                 }
             }
@@ -66,10 +69,10 @@ class ClientHandler extends Thread {
         }
     }
 
-    private void saveBackup(FileBackup backup, ObjectOutputStream out) throws IOException {
+    private void saveBackup(FileBackup backup, ObjectOutputStream out , String Path) throws IOException {
         try {
             String relativePath = backup.getFileName();
-            Path backupPath = Paths.get(Server.BACKUP_DIR, relativePath).normalize();
+            Path backupPath = Paths.get(Path, relativePath);
 
             // Ensure the path is still within the backup directory
             if (!backupPath.startsWith(Paths.get(Server.BACKUP_DIR))) {
@@ -95,8 +98,8 @@ class ClientHandler extends Thread {
         out.flush();
     }
 
-    private void restoreFiles(String baseFolderName, ObjectOutputStream out) throws IOException {
-        Path backupFolderPath = Paths.get(Server.BACKUP_DIR, baseFolderName);
+    private void restoreFiles(String baseFolderName, ObjectOutputStream out, String path) throws IOException {
+        Path backupFolderPath = Paths.get(path, baseFolderName);
         if (Files.notExists(backupFolderPath)) {
             out.writeObject("No backup found for the specified folder.");
             return;
@@ -122,24 +125,21 @@ class ClientHandler extends Thread {
     }
 
 
-    private void handleZipBackup(FileBackup backup, ObjectOutputStream out) throws IOException {
+    private void handleZipBackup(FileBackup backup, ObjectOutputStream out , String zipBackupPath) throws IOException {
         try {
-            Path zipBackupPath = Paths.get(Server.ZIP_BACKUP_DIR, backup.getFileName()).normalize();
-
-            if (!zipBackupPath.startsWith(Paths.get(Server.ZIP_BACKUP_DIR))) {
-                out.writeObject("Invalid file path: " + backup.getFileName());
-                return;
+            // Ensure user-specific zip backup directory exists
+            Path userZipBackupDir = Paths.get(zipBackupPath);
+            if (Files.notExists(userZipBackupDir)) {
+                Files.createDirectories(userZipBackupDir);
             }
 
-            if (Files.notExists(zipBackupPath.getParent())) {
-                Files.createDirectories(zipBackupPath.getParent());
-            }
+            Path zipFilePath = userZipBackupDir.resolve(backup.getFileName());
 
             byte[] zipData = Base64.getDecoder().decode(backup.getFileContent());
-            SecretKey secretKey = ConfigLoader.getSecretKey(); // Load the secret key
-            byte[] encryptedZipData = encrypt(zipData, secretKey); // Encrypt the zip data
+            SecretKey secretKey = ConfigLoader.getSecretKey(); // Make sure this method exists and provides the necessary key
+            byte[] encryptedZipData = encrypt(zipData, secretKey);
 
-            Files.write(zipBackupPath, encryptedZipData);
+            Files.write(zipFilePath, encryptedZipData);
             out.writeObject("Zip backup created for: " + backup.getFileName());
         } catch (Exception e) {
             e.printStackTrace();
@@ -149,9 +149,9 @@ class ClientHandler extends Thread {
     }
 
 
-    private void sendZipFileList(ObjectOutputStream out) throws IOException {
+    private void sendZipFileList(ObjectOutputStream out, String Path) throws IOException {
         try {
-            List<String> zipFiles = Files.walk(Paths.get(Server.ZIP_BACKUP_DIR))
+            List<String> zipFiles = Files.walk(Paths.get(Path))
                     .filter(Files::isRegularFile)
                     .map(path -> path.getFileName().toString())
                     .collect(Collectors.toList());
@@ -164,8 +164,8 @@ class ClientHandler extends Thread {
         out.flush();
     }
 
-    private void handleZipRestore(String zipFileName, ObjectOutputStream out) throws IOException {
-        Path zipFilePath = Paths.get(Server.ZIP_BACKUP_DIR, zipFileName);
+    private void handleZipRestore(String zipFileName, ObjectOutputStream out,String path) throws IOException {
+        Path zipFilePath = Paths.get(path, zipFileName);
         if (Files.notExists(zipFilePath)) {
             out.writeObject("No zip backup found with the specified name.");
             return;

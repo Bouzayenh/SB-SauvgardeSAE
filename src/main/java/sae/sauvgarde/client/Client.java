@@ -1,5 +1,6 @@
 package sae.sauvgarde.client;
 
+import org.apache.catalina.User;
 import sae.sauvgarde.common.FileBackup;
 import sae.sauvgarde.common.ZipUtility;
 
@@ -174,20 +175,23 @@ public class Client {
 
 
 
-    private static Set<String> loadAllowedExtensions() {
-        Set<String> extensions = new HashSet<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(PARAMETER_FILE_NAME))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                extensions.add(line.trim());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return extensions;
-    }
+//    private static Set<String> loadAllowedExtensions() {
+//        Set<String> extensions = new HashSet<>();
+//        try (BufferedReader reader = new BufferedReader(new FileReader(PARAMETER_FILE_NAME))) {
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                extensions.add(line.trim());
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return extensions;
+//    }
 
     private static boolean hasAllowedExtension(Path path, Set<String> allowedExtensions) {
+        if (allowedExtensions == null || allowedExtensions.isEmpty()) {
+            return true;
+        }
         String fileName = path.getFileName().toString();
         int i = fileName.lastIndexOf('.');
         if (i > 0) {
@@ -222,10 +226,13 @@ public class Client {
         return (SSLSocket) sslSocketFactory.createSocket(SERVER_ADDRESS, SERVER_PORT);
     }
 
-    public static String performOperation(String folderPathStr, String operation, String useZipStr) throws Exception {
+    public static String performOperation(String folderPathStr, String operation, String useZipStr,String username,Set<String> allowedExtensions) throws Exception {
         SSLSocket sslSocket = createSSLSocket();
         ObjectOutputStream out = new ObjectOutputStream(sslSocket.getOutputStream());
         ObjectInputStream in = new ObjectInputStream(sslSocket.getInputStream());
+
+        out.writeObject(username);
+        out.flush();
 
         try {
             Path folderPath = Paths.get(folderPathStr);
@@ -234,7 +241,6 @@ public class Client {
             }
 
             String baseFolderName = folderPath.getFileName().toString();
-            Set<String> allowedExtensions = loadAllowedExtensions();
 
             boolean useZip = "yes".equalsIgnoreCase(useZipStr);
             if (useZip) {
